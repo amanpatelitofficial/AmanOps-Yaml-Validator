@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import YamlEditor from "../components/YamlEditor";
 import ValidationResult from "../components/ValidationResult";
 import { validateYaml } from "../utils/yamlValidator";
@@ -14,10 +15,26 @@ const Index = () => {
     errors: [],
     correctedYaml: "",
   });
+  const { toast } = useToast();
 
   const handleValidate = () => {
-    const result = validateYaml(yaml);
-    setValidation(result);
+    try {
+      const result = validateYaml(yaml);
+      setValidation(result);
+      
+      if (result.isValid) {
+        toast({
+          title: "Validation Successful",
+          description: "Your YAML is valid!",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Validation Failed",
+        description: "There was an error processing your YAML.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -50,26 +67,30 @@ const Index = () => {
                     onChange={setYaml} 
                   />
                 </div>
+                <div className="mt-4">
+                  <Button 
+                    onClick={handleValidate}
+                    className="w-full px-4 py-2 text-base font-semibold 
+                      bg-gradient-to-r from-blue-500 to-purple-600 
+                      hover:from-blue-600 hover:to-purple-700 
+                      transition-all duration-300 
+                      shadow-md hover:shadow-lg"
+                  >
+                    Validate YAML
+                  </Button>
+                </div>
               </div>
               
-              <ValidationResult
-                isValid={validation.isValid}
-                errors={validation.errors}
-                correctedYaml={validation.correctedYaml}
-              />
-            </div>
-            
-            <div className="flex justify-center">
-              <Button 
-                onClick={handleValidate}
-                className="px-8 py-3 text-base font-semibold 
-                  bg-gradient-to-r from-blue-500 to-purple-600 
-                  hover:from-blue-600 hover:to-purple-700 
-                  transition-all duration-300 
-                  shadow-md hover:shadow-lg"
-              >
-                Validate YAML
-              </Button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Validation Results
+                </label>
+                <ValidationResult
+                  isValid={validation.isValid}
+                  errors={validation.errors}
+                  correctedYaml={validation.correctedYaml}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

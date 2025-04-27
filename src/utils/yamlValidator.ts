@@ -8,6 +8,14 @@ interface ValidationResult {
 }
 
 export const validateYaml = (input: string): ValidationResult => {
+  if (!input || input.trim() === "") {
+    return {
+      isValid: false,
+      errors: ["YAML cannot be empty"],
+      correctedYaml: "",
+    };
+  }
+
   try {
     // Try to parse the YAML
     const parsed = yaml.load(input);
@@ -17,6 +25,7 @@ export const validateYaml = (input: string): ValidationResult => {
       indent: 2,
       lineWidth: -1,
       noRefs: true,
+      quotingType: '"',
     });
 
     return {
@@ -31,12 +40,32 @@ export const validateYaml = (input: string): ValidationResult => {
     let correctedYaml = input
       .replace(/\t/g, "  ") // Replace tabs with spaces
       .replace(/:\s*([^\s])/g, ": $1") // Add space after colons
-      .replace(/\s*:\s*$/gm, ":"); // Fix trailing colons
+      .replace(/\s*:\s*$/gm, ":") // Fix trailing colons
+      .replace(/^(\s*)-\s*([^\s])/gm, "$1- $2"); // Ensure space after list markers
     
-    return {
-      isValid: false,
-      errors: [errorMessage],
-      correctedYaml,
-    };
+    try {
+      // Try to parse the corrected YAML to see if our fixes worked
+      const testParse = yaml.load(correctedYaml);
+      const betterFormatted = yaml.dump(testParse, {
+        indent: 2,
+        lineWidth: -1,
+        noRefs: true,
+        quotingType: '"',
+      });
+      
+      // If we get here, our correction worked
+      return {
+        isValid: false,
+        errors: [errorMessage],
+        correctedYaml: betterFormatted,
+      };
+    } catch (secondError) {
+      // Our automatic correction didn't work
+      return {
+        isValid: false,
+        errors: [errorMessage],
+        correctedYaml: correctedYaml,
+      };
+    }
   }
 };
