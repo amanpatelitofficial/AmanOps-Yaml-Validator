@@ -7,7 +7,8 @@ import { validateYaml } from "../utils/yamlValidator";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { motion } from "framer-motion";
-import { Code } from "lucide-react";
+import { Code, Wand2 } from "lucide-react";
+import AiYamlAssistant from "../components/AiYamlAssistant";
 
 const Index = () => {
   const [yaml, setYaml] = useState("# Enter your YAML here\nname: example\nversion: 1.0\n");
@@ -38,6 +39,15 @@ const Index = () => {
     }
   };
 
+  const handleApplyCorrection = (correctedYaml: string) => {
+    setYaml(correctedYaml);
+    toast({
+      title: "Correction Applied",
+      description: "AI-generated correction has been applied to your YAML.",
+    });
+    handleValidate();
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -65,8 +75,8 @@ const Index = () => {
             <CardTitle className="text-3xl font-extrabold text-white drop-shadow-md">
               YAML Validator
             </CardTitle>
-            <p className="text-white/80 mt-2">
-              Validate and correct your YAML syntax with ease
+            <p className="text-white/80 mt-2 flex items-center justify-center gap-2">
+              Validate and correct your YAML syntax with ease <Wand2 className="h-4 w-4" />
             </p>
           </CardHeader>
           
@@ -94,6 +104,14 @@ const Index = () => {
                     Validate YAML
                   </Button>
                 </div>
+                
+                {!validation.isValid && (
+                  <AiYamlAssistant 
+                    isInvalid={!validation.isValid} 
+                    yamlContent={yaml}
+                    onApplyCorrection={handleApplyCorrection}
+                  />
+                )}
               </div>
               
               <div>

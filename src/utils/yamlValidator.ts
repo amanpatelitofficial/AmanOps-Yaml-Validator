@@ -69,3 +69,52 @@ export const validateYaml = (input: string): ValidationResult => {
     }
   }
 };
+
+// Intelligent YAML correction using common patterns and fixes
+export const aiCorrectYaml = (input: string): string => {
+  // Common YAML syntax errors and corrections
+  let corrected = input
+    // Fix indentation issues
+    .replace(/^\s*(\w+):/gm, "$1:") // Remove leading spaces before keys
+    .replace(/^(\s*\w+:)\s*(\w+.*)/gm, "$1 $2") // Ensure space after colon for inline values
+    
+    // Fix quote issues
+    .replace(/:\s*([^,\s]*?)([,\s]|$)/gm, (match, p1, p2) => {
+      // Add quotes to values that need them
+      if (
+        p1 &&
+        !p1.startsWith('"') &&
+        !p1.startsWith("'") &&
+        (p1.includes(':') || p1.includes(' '))
+      ) {
+        return `: "${p1}"${p2}`;
+      }
+      return match;
+    })
+    
+    // Fix array syntax
+    .replace(/^(\s+)(\w+):\s*\[/gm, "$1$2:") // Convert inline arrays to multi-line
+    .replace(/^\s*-\s*([^\s])/gm, "- $1") // Ensure space after dash in lists
+    
+    // Fix nested content alignment
+    .replace(/^(\s*)(\w+):\n(\s*)/gm, (match, indent, key, nextIndent) => {
+      if (nextIndent.length <= indent.length) {
+        return `${indent}${key}:\n${indent}  `;
+      }
+      return match;
+    });
+
+  try {
+    // If we can parse it as valid YAML, then format it properly
+    const parsed = yaml.load(corrected);
+    return yaml.dump(parsed, {
+      indent: 2,
+      lineWidth: -1,
+      noRefs: true,
+      quotingType: '"',
+    });
+  } catch (e) {
+    // If we still can't parse it, return our best attempt
+    return corrected;
+  }
+};
