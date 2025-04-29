@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import YamlEditor from "../components/YamlEditor";
@@ -7,7 +8,6 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { motion } from "framer-motion";
 import { Code } from "lucide-react";
-import YamlGenerator from "../components/YamlGenerator";
 
 const Index = () => {
   const [yaml, setYaml] = useState("# Enter your YAML here\nname: example\nversion: 1.0\n");
@@ -38,14 +38,6 @@ const Index = () => {
     }
   };
 
-  const handleGenerate = (generatedYaml: string) => {
-    setYaml(generatedYaml);
-    toast({
-      title: "YAML Generated",
-      description: "Your YAML has been generated and inserted into the editor.",
-    });
-  };
-
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -68,20 +60,6 @@ const Index = () => {
       </motion.div>
 
       <div className="w-full max-w-4xl">
-        <Card className="shadow-2xl border-none mb-6">
-          <CardHeader className="text-center bg-gradient-to-r from-purple-500 to-indigo-600 rounded-t-lg py-6">
-            <CardTitle className="text-3xl font-extrabold text-white drop-shadow-md">
-              YAML Generator
-            </CardTitle>
-            <p className="text-white/80 mt-2">
-              Generate YAML from key-value pairs
-            </p>
-          </CardHeader>
-          <CardContent className="p-8">
-            <YamlGenerator onGenerate={handleGenerate} />
-          </CardContent>
-        </Card>
-
         <Card className="shadow-2xl border-none">
           <CardHeader className="text-center bg-gradient-to-r from-purple-500 to-indigo-600 rounded-t-lg py-6">
             <CardTitle className="text-3xl font-extrabold text-white drop-shadow-md">
