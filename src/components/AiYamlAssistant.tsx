@@ -4,6 +4,7 @@ import { Bot, Code } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { aiCorrectYaml } from "../utils/yamlValidator";
+import { useToast } from "@/hooks/use-toast";
 
 interface AiYamlAssistantProps {
   isInvalid: boolean;
@@ -14,24 +15,49 @@ interface AiYamlAssistantProps {
 const AiYamlAssistant = ({ isInvalid, yamlContent, onApplyCorrection }: AiYamlAssistantProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState("");
+  const { toast } = useToast();
 
-  const generateCorrection = () => {
+  const generateCorrection = async () => {
     setIsGenerating(true);
     
     try {
       // Process the YAML with our AI correction algorithm
       const corrected = aiCorrectYaml(yamlContent);
-      setAiSuggestion(corrected);
+      
+      if (corrected && corrected !== yamlContent) {
+        setAiSuggestion(corrected);
+        toast({
+          title: "AI Correction Ready",
+          description: "A correction has been generated for your YAML.",
+        });
+      } else {
+        toast({
+          title: "Unable to Correct",
+          description: "The AI couldn't generate a valid correction. Try manual fixes.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error("Error generating correction:", error);
+      toast({
+        title: "Error in Correction",
+        description: "Failed to generate correction. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsGenerating(false);
     }
   };
 
   const applySuggestion = () => {
-    onApplyCorrection(aiSuggestion);
-    setAiSuggestion("");
+    if (aiSuggestion) {
+      onApplyCorrection(aiSuggestion);
+      setAiSuggestion("");
+      toast({
+        title: "Correction Applied",
+        description: "The AI-generated correction has been applied.",
+      });
+    }
   };
 
   if (!isInvalid) return null;

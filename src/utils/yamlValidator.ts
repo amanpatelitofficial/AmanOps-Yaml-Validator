@@ -1,4 +1,3 @@
-
 import * as yaml from "js-yaml";
 
 interface ValidationResult {
@@ -36,7 +35,7 @@ export const validateYaml = (input: string): ValidationResult => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     
-    // Attempt to fix common YAML issues
+    // Basic automatic corrections
     let correctedYaml = input
       .replace(/\t/g, "  ") // Replace tabs with spaces
       .replace(/:\s*([^\s])/g, ": $1") // Add space after colons
@@ -70,51 +69,89 @@ export const validateYaml = (input: string): ValidationResult => {
   }
 };
 
-// Intelligent YAML correction using common patterns and fixes
+// Enhanced AI-powered YAML correction
 export const aiCorrectYaml = (input: string): string => {
-  // Common YAML syntax errors and corrections
-  let corrected = input
-    // Fix indentation issues
-    .replace(/^\s*(\w+):/gm, "$1:") // Remove leading spaces before keys
-    .replace(/^(\s*\w+:)\s*(\w+.*)/gm, "$1 $2") // Ensure space after colon for inline values
-    
-    // Fix quote issues
-    .replace(/:\s*([^,\s]*?)([,\s]|$)/gm, (match, p1, p2) => {
-      // Add quotes to values that need them
-      if (
-        p1 &&
-        !p1.startsWith('"') &&
-        !p1.startsWith("'") &&
-        (p1.includes(':') || p1.includes(' '))
-      ) {
-        return `: "${p1}"${p2}`;
-      }
-      return match;
-    })
-    
-    // Fix array syntax
-    .replace(/^(\s+)(\w+):\s*\[/gm, "$1$2:") // Convert inline arrays to multi-line
-    .replace(/^\s*-\s*([^\s])/gm, "- $1") // Ensure space after dash in lists
-    
-    // Fix nested content alignment
-    .replace(/^(\s*)(\w+):\n(\s*)/gm, (match, indent, key, nextIndent) => {
-      if (nextIndent.length <= indent.length) {
-        return `${indent}${key}:\n${indent}  `;
-      }
-      return match;
-    });
-
   try {
-    // If we can parse it as valid YAML, then format it properly
-    const parsed = yaml.load(corrected);
-    return yaml.dump(parsed, {
-      indent: 2,
-      lineWidth: -1,
-      noRefs: true,
-      quotingType: '"',
-    });
+    // Step 1: Apply a series of common corrections
+    let corrected = input
+      // Fix indentation issues
+      .replace(/\t/g, "  ") // Replace tabs with 2 spaces
+      .replace(/^(\s*\w+):\s*$/gm, "$1: ") // Add space after keys with no value
+      
+      // Fix quote issues
+      .replace(/:\s*'([^']*)'/g, ': "$1"') // Standardize to double quotes
+      .replace(/:\s*([^"'\s][^,\s]*[:])/g, ': "$1"') // Quote values containing colons
+      
+      // Fix array syntax
+      .replace(/^(\s*)-([^\s])/gm, "$1- $2") // Ensure space after dash in lists
+      
+      // Fix common alignment issues
+      .replace(/^(\s*)(\w+):\n(?!\s)/gm, "$1$2:\n  ") // Add indent after key with newline
+      
+      // Fix missing quotes for special values
+      .replace(/:\s*(yes|no|true|false|null|on|off)$/gim, (match, value) => {
+        return ': ' + value.toLowerCase(); // Ensure boolean/null values are proper
+      })
+      
+      // Fix trailing commas
+      .replace(/,\s*$/gm, "");
+    
+    // Step 2: Try to parse corrected YAML
+    try {
+      const parsed = yaml.load(corrected);
+      
+      // Step 3: If successful, return properly formatted YAML
+      return yaml.dump(parsed, {
+        indent: 2,
+        lineWidth: -1,
+        noRefs: true,
+        quotingType: '"',
+        forceQuotes: false,
+      });
+    } catch (parseError) {
+      // Step 4: Try line-by-line correction if parsing failed
+      const lines = corrected.split("\n");
+      const correctedLines = [];
+      let inList = false;
+      let currentIndent = 0;
+      
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        
+        // Skip empty lines
+        if (line.trim() === '') {
+          correctedLines.push(line);
+          continue;
+        }
+        
+        // Handle indentation consistency
+        const indent = line.search(/\S/);
+        if (indent > -1) {
+          // Keep track of list items
+          if (line.trim().startsWith('- ')) {
+            inList = true;
+            
+            // Ensure list items align properly
+            if (i > 0 && !lines[i-1].trim().startsWith('- ') && !lines[i-1].includes(':')) {
+              line = ' '.repeat(currentIndent + 2) + line.trim();
+            }
+          } else if (line.includes(':')) {
+            // This is a key
+            inList = false;
+            currentIndent = indent;
+          } else if (inList && !line.trim().startsWith('- ')) {
+            // Content belonging to a list item
+            line = ' '.repeat(currentIndent + 4) + line.trim();
+          }
+        }
+        
+        correctedLines.push(line);
+      }
+      
+      return correctedLines.join('\n');
+    }
   } catch (e) {
-    // If we still can't parse it, return our best attempt
-    return corrected;
+    console.error("Error in aiCorrectYaml:", e);
+    return input; // Return original input if all correction attempts fail
   }
 };
