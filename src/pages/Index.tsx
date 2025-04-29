@@ -7,7 +7,7 @@ import { validateYaml } from "../utils/yamlValidator";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { motion } from "framer-motion";
-import { Code, Wand2 } from "lucide-react";
+import { Code, Bug, Zap } from "lucide-react";
 import AiYamlAssistant from "../components/AiYamlAssistant";
 
 const Index = () => {
@@ -67,6 +67,10 @@ const Index = () => {
         <p className="text-xl text-gray-600 mt-2 flex items-center justify-center gap-2">
           Let's Code & Deploy <Code className="inline-block" />
         </p>
+        <div className="flex items-center justify-center mt-2 text-green-600 font-medium">
+          <Zap className="h-4 w-4 mr-1" />
+          <span className="text-sm">Production Ready</span>
+        </div>
       </motion.div>
 
       <div className="w-full max-w-4xl">
@@ -76,7 +80,7 @@ const Index = () => {
               YAML Validator
             </CardTitle>
             <p className="text-white/80 mt-2 flex items-center justify-center gap-2">
-              Validate and correct your YAML syntax with ease <Wand2 className="h-4 w-4" />
+              Validate and correct your YAML syntax with ease <Bug className="h-4 w-4" />
             </p>
           </CardHeader>
           

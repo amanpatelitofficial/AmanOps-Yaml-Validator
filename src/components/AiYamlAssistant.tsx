@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Ai, Code } from "lucide-react";
+import { Bot, Code } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { aiCorrectYaml } from "../utils/yamlValidator";
@@ -40,7 +40,7 @@ const AiYamlAssistant = ({ isInvalid, yamlContent, onApplyCorrection }: AiYamlAs
     <Card className="mt-4 p-4 border-amber-300 bg-amber-50">
       <div className="flex items-start space-x-4">
         <div className="bg-amber-100 p-2 rounded-full">
-          <Ai className="h-6 w-6 text-amber-600" />
+          <Bot className="h-6 w-6 text-amber-600" />
         </div>
         
         <div className="flex-1">
