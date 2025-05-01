@@ -1,3 +1,4 @@
+
 import * as yaml from "js-yaml";
 
 interface ValidationResult {
@@ -6,152 +7,157 @@ interface ValidationResult {
   correctedYaml: string;
 }
 
-export const validateYaml = (input: string): ValidationResult => {
-  if (!input || input.trim() === "") {
-    return {
-      isValid: false,
-      errors: ["YAML cannot be empty"],
-      correctedYaml: "",
-    };
-  }
-
+export const validateYaml = (yamlContent: string): ValidationResult => {
   try {
     // Try to parse the YAML
-    const parsed = yaml.load(input);
+    yaml.load(yamlContent);
     
-    // If successful, dump it back to YAML format
-    const formatted = yaml.dump(parsed, {
-      indent: 2,
-      lineWidth: -1,
-      noRefs: true,
-      quotingType: '"',
-    });
-
+    // If no error is thrown, it's valid
     return {
       isValid: true,
       errors: [],
-      correctedYaml: formatted,
+      correctedYaml: yamlContent,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    return {
+      isValid: false,
+      errors: [errorMessage],
+      correctedYaml: "",
+    };
+  }
+};
+
+export const aiCorrectYaml = (yamlContent: string): string => {
+  try {
+    // Try to parse the YAML first to see if it's valid
+    yaml.load(yamlContent);
+    return yamlContent; // If valid, just return as is
+  } catch (error) {
+    // If there's an error, attempt to fix common YAML issues
+    let corrected = yamlContent;
+
+    // Fix 1: Fix indentation issues (common in YAML)
+    corrected = fixIndentation(corrected);
+
+    // Fix 2: Fix missing quotes around special characters
+    corrected = fixQuotes(corrected);
+
+    // Fix 3: Fix trailing spaces
+    corrected = corrected.replace(/\s+$/gm, "");
+
+    // Fix 4: Fix missing colons after keys
+    corrected = corrected.replace(/^(\s*)([^:\s]+)(\s*)$/gm, "$1$2:$3");
+
+    // Fix 5: Handle empty values
+    corrected = corrected.replace(/^(\s*[^:\s]+):\s*$/gm, "$1: \"\"");
     
-    // Basic automatic corrections
-    let correctedYaml = input
-      .replace(/\t/g, "  ") // Replace tabs with spaces
-      .replace(/:\s*([^\s])/g, ": $1") // Add space after colons
-      .replace(/\s*:\s*$/gm, ":") // Fix trailing colons
-      .replace(/^(\s*)-\s*([^\s])/gm, "$1- $2"); // Ensure space after list markers
-    
+    // Verify if our corrections worked
     try {
-      // Try to parse the corrected YAML to see if our fixes worked
-      const testParse = yaml.load(correctedYaml);
-      const betterFormatted = yaml.dump(testParse, {
-        indent: 2,
-        lineWidth: -1,
-        noRefs: true,
-        quotingType: '"',
-      });
-      
-      // If we get here, our correction worked
-      return {
-        isValid: false,
-        errors: [errorMessage],
-        correctedYaml: betterFormatted,
-      };
-    } catch (secondError) {
-      // Our automatic correction didn't work
-      return {
-        isValid: false,
-        errors: [errorMessage],
-        correctedYaml: correctedYaml,
-      };
+      yaml.load(corrected);
+      return corrected;
+    } catch (e) {
+      // If still invalid, try a more aggressive approach
+      corrected = tryAggressiveRepair(yamlContent);
+      return corrected;
     }
   }
 };
 
-// Enhanced AI-powered YAML correction
-export const aiCorrectYaml = (input: string): string => {
-  try {
-    // Step 1: Apply a series of common corrections
-    let corrected = input
-      // Fix indentation issues
-      .replace(/\t/g, "  ") // Replace tabs with 2 spaces
-      .replace(/^(\s*\w+):\s*$/gm, "$1: ") // Add space after keys with no value
-      
-      // Fix quote issues
-      .replace(/:\s*'([^']*)'/g, ': "$1"') // Standardize to double quotes
-      .replace(/:\s*([^"'\s][^,\s]*[:])/g, ': "$1"') // Quote values containing colons
-      
-      // Fix array syntax
-      .replace(/^(\s*)-([^\s])/gm, "$1- $2") // Ensure space after dash in lists
-      
-      // Fix common alignment issues
-      .replace(/^(\s*)(\w+):\n(?!\s)/gm, "$1$2:\n  ") // Add indent after key with newline
-      
-      // Fix missing quotes for special values
-      .replace(/:\s*(yes|no|true|false|null|on|off)$/gim, (match, value) => {
-        return ': ' + value.toLowerCase(); // Ensure boolean/null values are proper
-      })
-      
-      // Fix trailing commas
-      .replace(/,\s*$/gm, "");
+// Helper function to fix indentation
+const fixIndentation = (content: string): string => {
+  const lines = content.split("\n");
+  const result: string[] = [];
+  let lastIndent = 0;
+  let inSequence = false;
+
+  for (const line of lines) {
+    // Skip empty lines
+    if (!line.trim()) {
+      result.push("");
+      continue;
+    }
+
+    // Calculate indent level
+    const match = line.match(/^(\s*)/);
+    const indent = match ? match[1].length : 0;
+
+    // Check if this is a sequence item
+    const isSequenceItem = line.trim().startsWith("-");
     
-    // Step 2: Try to parse corrected YAML
-    try {
-      const parsed = yaml.load(corrected);
+    // Adjust indentation based on context
+    if (isSequenceItem && !inSequence) {
+      inSequence = true;
+    } else if (!isSequenceItem && inSequence) {
+      inSequence = false;
+    }
+
+    // If indentation seems off (jumping more than 2 spaces at once), fix it
+    if (indent > lastIndent + 4) {
+      const newIndent = " ".repeat(lastIndent + 2);
+      result.push(newIndent + line.trim());
+    } else {
+      result.push(line);
+    }
+
+    // Update lastIndent for non-empty lines
+    if (line.trim()) {
+      lastIndent = indent;
+    }
+  }
+
+  return result.join("\n");
+};
+
+// Helper function to fix quotes
+const fixQuotes = (content: string): string => {
+  // Find values that might need quotes
+  const needQuotesRegex = /^(\s*)([^:\s]+):\s*([^#"\n][^#\n]*[:{}\[\],&*%@`"|<>=!]+[^#\n]*)$/gm;
+  return content.replace(needQuotesRegex, '$1$2: "$3"');
+};
+
+// More aggressive repair attempt
+const tryAggressiveRepair = (content: string): string => {
+  try {
+    // Try to parse each line as a key-value pair
+    const lines = content.split("\n");
+    const result: string[] = [];
+    
+    for (let line of lines) {
+      line = line.trim();
       
-      // Step 3: If successful, return properly formatted YAML
-      return yaml.dump(parsed, {
-        indent: 2,
-        lineWidth: -1,
-        noRefs: true,
-        quotingType: '"',
-        forceQuotes: false,
-      });
-    } catch (parseError) {
-      // Step 4: Try line-by-line correction if parsing failed
-      const lines = corrected.split("\n");
-      const correctedLines = [];
-      let inList = false;
-      let currentIndent = 0;
-      
-      for (let i = 0; i < lines.length; i++) {
-        let line = lines[i];
-        
-        // Skip empty lines
-        if (line.trim() === '') {
-          correctedLines.push(line);
-          continue;
-        }
-        
-        // Handle indentation consistency
-        const indent = line.search(/\S/);
-        if (indent > -1) {
-          // Keep track of list items
-          if (line.trim().startsWith('- ')) {
-            inList = true;
-            
-            // Ensure list items align properly
-            if (i > 0 && !lines[i-1].trim().startsWith('- ') && !lines[i-1].includes(':')) {
-              line = ' '.repeat(currentIndent + 2) + line.trim();
-            }
-          } else if (line.includes(':')) {
-            // This is a key
-            inList = false;
-            currentIndent = indent;
-          } else if (inList && !line.trim().startsWith('- ')) {
-            // Content belonging to a list item
-            line = ' '.repeat(currentIndent + 4) + line.trim();
-          }
-        }
-        
-        correctedLines.push(line);
+      // Skip empty lines or comments
+      if (!line || line.startsWith("#")) {
+        result.push(line);
+        continue;
       }
       
-      return correctedLines.join('\n');
+      // Try to extract key-value format
+      const colonPos = line.indexOf(":");
+      
+      if (colonPos > 0) {
+        const key = line.substring(0, colonPos).trim();
+        let value = line.substring(colonPos + 1).trim();
+        
+        // If value has special characters, quote it
+        if (value && /[:{}\[\],&*%@`"|<>=!]+/.test(value)) {
+          value = `"${value}"`;
+        }
+        
+        result.push(`${key}: ${value}`);
+      } else if (line.trim().startsWith("-")) {
+        // Handle list items
+        result.push(line);
+      } else {
+        // If no colon found, assume it's a key with missing colon
+        result.push(`${line.trim()}:`);
+      }
     }
+    
+    return result.join("\n");
   } catch (e) {
-    console.error("Error in aiCorrectYaml:", e);
-    return input; // Return original input if all correction attempts fail
+    // If all else fails, return the original content
+    console.error("Failed to repair YAML:", e);
+    return content;
   }
 };

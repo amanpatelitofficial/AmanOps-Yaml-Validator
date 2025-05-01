@@ -18,6 +18,15 @@ const AiYamlAssistant = ({ isInvalid, yamlContent, onApplyCorrection }: AiYamlAs
   const { toast } = useToast();
 
   const generateCorrection = async () => {
+    if (!yamlContent.trim()) {
+      toast({
+        title: "Empty Content",
+        description: "Cannot generate correction for empty YAML.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsGenerating(true);
     
     try {
