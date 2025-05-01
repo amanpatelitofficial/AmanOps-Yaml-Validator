@@ -8,7 +8,6 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { motion } from "framer-motion";
 import { Code, Bug, Zap } from "lucide-react";
-import AiYamlAssistant from "../components/AiYamlAssistant";
 
 const Index = () => {
   const [yaml, setYaml] = useState("# Enter your YAML here\nname: example\nversion: 1.0\n");
@@ -37,15 +36,6 @@ const Index = () => {
         variant: "destructive",
       });
     }
-  };
-
-  const handleApplyCorrection = (correctedYaml: string) => {
-    setYaml(correctedYaml);
-    toast({
-      title: "Correction Applied",
-      description: "AI-generated correction has been applied to your YAML.",
-    });
-    handleValidate();
   };
 
   return (
@@ -80,7 +70,7 @@ const Index = () => {
               YAML Validator
             </CardTitle>
             <p className="text-white/80 mt-2 flex items-center justify-center gap-2">
-              Validate and correct your YAML syntax with ease <Bug className="h-4 w-4" />
+              Validate your YAML syntax with ease <Bug className="h-4 w-4" />
             </p>
           </CardHeader>
           
@@ -108,14 +98,6 @@ const Index = () => {
                     Validate YAML
                   </Button>
                 </div>
-                
-                {!validation.isValid && (
-                  <AiYamlAssistant 
-                    isInvalid={!validation.isValid} 
-                    yamlContent={yaml}
-                    onApplyCorrection={handleApplyCorrection}
-                  />
-                )}
               </div>
               
               <div>
